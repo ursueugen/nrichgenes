@@ -4,17 +4,28 @@
     "array" : [
                [0, 1, 3, 2, 5, 9, 10],
                [5, 9, 13, 1, 34, -5, 0],
-               [4, 30, -12, 30, 23, 11, -0],
+               [4, 30, -12, 30, 23, 11, -0]
               ],
-    "geneset": {"test_customized_geneset": {
+    "index": ["factor1", "factor2", "factor3"],
+    "customized_geneset": {"test_customized_geneset": {
         "set1": ["AKT2", "PIK3CB", "MYL3"],
         "set2": ["NECTIN2", "MAPK1", "ACTC1"]
     }},
+    "test_gmt_paths": ["data/genesets/GO_Process_2018.gmt", "data/genesets/KEGG_Human_2019.gmt"],
+    "test_gmts": ["GO_Process_2018", "KEGG_Human_2019"],
+    "test_geneset": {
+    
+        "Legionellosis": ["HSPA6", "APAF1", "HSPA1L", "HSPA8", "HSPA2", "IL18", "EEF1A2", "TLR2", "CLK1", "IL1B", "EEF1A1", "NFKBIA", "IL6", "EEF1G", "HSPA1A", "CYCS", "TLR5", "NAIP", "TLR4", "HSPA1B", "RAB1A", "CXCL8", "RAB1B", "RELA", "SAR1A", "SAR1B", "ARF1", "HBS1L", "CXCL2", "NLRC4", "TNF", "CXCL1", "CXCL3", "BCL2L13", "PYCARD", "CASP8", "CASP9", "HSF1", "CASP7", "CASP3", "CASP1", "CR1", "NFKB1", "NFKB2", "MYD88", "SEC22B", "ITGB2", "VCP", "HSPD1", "ITGAM", "C3", "BNIP3", "IL12B", "IL12A", "CD14"],
+
+        "Malaria": ["TGFB1", "TGFB3", "TGFB2", "IL10", "HBA1", "IL18", "HBA2", "VCAM1", "TLR2", "IL1B", "IL6", "IFNG", "TLR9", "PECAM1", "TLR4", "CXCL8", "GYPB", "CD40", "GYPA", "CSF3", "LRP1", "GYPC", "CD81", "HBB", "TNF", "KLRC4-KLRK1", "COMP", "CD36", "CR1", "HGF", "SELE", "MYD88", "SELP", "ACKR1", "SDC1", "SDC2", "MET", "KLRB1", "CD40LG", "ITGB2", "THBS1", "THBS3", "ITGAL", "THBS2", "ICAM1", "THBS4", "KLRK1", "CCL2", "IL12A"],
+
+        "angiotensin-activated signaling pathway (GO:0038166)": ["AHCYL1", "SRC", "CA2", "ACTN2", "CAMK2A", "CAV1", "AGTR1"]
+},
     "prerank_kws": {
         "min_size": 1,
         "max_size": 7,
-        "verbose": true,
+        "verbose": false,
         "no_plot": true
     },
-    "enrichr_kws": {}
+    "enrichr_kws": {"cutoff": 0.99}
 }

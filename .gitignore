@@ -1,2 +1,8 @@
 .pybiomart.sqlite
-.ipynb_checkpoints/
+.ipynb_checkpoints
+data/.ipynb_checkpoints/
+data/genesets/.ipynb_checkpoints/
+nrichgenes/.ipynb_checkpoints/
+nrichgenes/__pycache__/
+tests/.ipynb_checkpoints/
+tests/__pycache__/

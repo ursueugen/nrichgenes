@@ -1,3 +1,4 @@
+import warnings
 import pandas as pd
 from pathlib import Path
 from pybiomart import Dataset
@@ -51,3 +52,29 @@ def ensembl_to_names(genes, lookup_path: str = GENE_LOOKUP_PATH) -> list:
         lk = download_lookup(path=fp)
     
     return lk.set_index('ensembl_id').loc[genes]['name'].to_list()
+
+
+def get_genesets(gmts: list, terms: list) -> dict:
+    '''
+    Gets gene sets from .gmt files.
+    
+    :param gmts - list of paths to .gmt files to be searched
+    :param setnames - list of names of gene sets to extract.
+    
+    :return gsets, e.g. {'adipokine': ['gene1', 'gene2', ...], 'mitochondria': ['gene1', ...], ...}
+    '''
+    
+    gsets = {}
+    
+    for gmt in gmts:
+        
+        with open(gmt, 'r') as f:    
+            for line in f:
+                process = line.split("\t\t")[0]
+                if process in terms:
+                    gsets[process] = line.split("\t\t")[1].split()
+                    
+#                     assert gsets[process][-1] != '\n'
+#                     warnings.warn("Will remove last gene from last term!", UserWarning)
+    
+    return gsets

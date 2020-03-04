@@ -4,7 +4,7 @@ import warnings
 
 import pandas as pd
 import gseapy as gp
-from .utils import ensembl_to_names
+from .utils import ensembl_to_names, get_genesets
 
 
 GENESETS_DIR  = Path('data/genesets')
@@ -25,6 +25,7 @@ class Enricher(object):
     :methods
         enrichr();
         prerank();
+        measure_activity();
         get_results();
     ____________________________________________________________
     https://gseapy.readthedocs.io/en/master/gseapy_example.html
@@ -57,6 +58,7 @@ class Enricher(object):
             
         if self.gene_list[0][:3] == 'ENS':
             # assume ensembl ids as gene labels
+            warnings.warn("Ensembl IDs or gene names are assumed as labels.", UserWarning)
             self.gene_names = self._ens_to_names(self.gene_list)
             if self.gene_rnk:
                 self.gene_rnk.index = self._ens_to_names(self.gene_rnk.index)
@@ -75,7 +77,9 @@ class Enricher(object):
     def get_results(self) -> dict:
         '''Returns dict of results of enrichr and prerank analysis.'''
         
-        if not (self.activity_flag & self.prerank_flag & self.enrich_flag):
+        raise NotImplementedError("There is some bug during testing or ...")
+        
+        if not (self.activity_flag & self.prerank_flag & self.enrichr_flag):
             raise LookupError("No results are available yet.")
         
         res = {}
@@ -110,36 +114,76 @@ class Enricher(object):
 #                              for gs in self.gene_sets}
         
         return enr
+        
     
-    
-    def prerank(self, gene_sets: None or dict = None, prerank_kws: dict = {}):
+    def prerank(self, rnk: pd.Series = None, gene_sets: list or dict = None, prerank_kws: dict = {}):
         '''
         Performs prerank analysis on the input genes. 
         
+        :param rnk
         :param gene_sets   - dict with gene sets, e.g. {'name': {'set1': ['gene1', ...], 'set2': ['gene1', ...]}}
         :param prerank_kws - keyword args for prerank function of gseapy
-        '''    
+        '''
         
-        rnk = self.gene_rnk
-        res = {}
+        df = None
         
-        if gene_sets:
+        # Initialization depending on inputs
+        if (self.gene_df is None) & (rnk is None) & (self.gene_rnk is None):
+            raise ValueError("Need df or rnk(series) for preranking.")
+        
+        elif rnk is not None:
+            res = {}
+        
+        elif (self.gene_df is None) & (self.gene_rnk is not None) & (rnk is None):
+            rnk = self.gene_rnk
+            res = {}
+            
+        elif (self.gene_df is not None):
+            df = self.gene_df
+            res = {k: {} for k in df.columns}
+            
+            
+        # Get correct gsets
+        if type(gene_sets) == dict:
             gsets = gene_sets
-        else:
+            if len(gsets.keys()) != 1:
+                raise ValueError("If custom gene set, assure len(keys) is 1.")
+        elif type(gene_sets) == list:
+            gsets = {k: v for k, v in self.local_gene_sets.items() if k in gene_sets}
+        else:  # None
             gsets = self.local_gene_sets
         
+        
+        # Perform enrichment
         # change variable name for v, misleading!
         for gset, v in gsets.items():
             
             # need to put the results in different directories to avoid overwriting
             warnings.warn("For multiple processes, the directory files are overwritten!", UserWarning)
             
-            prerank   = gp.prerank(rnk = rnk, 
-                                   gene_sets=v,
-                                   outdir = str(self.outdir),
-                                   format = 'png',
-                                   **prerank_kws)
-            res[gset] = prerank
+            if df is not None:
+                
+                # rnk should be None
+                assert rnk is None
+                
+                for sample, gene_values in df.iteritems():
+                    
+                    prerank = gp.prerank(rnk = gene_values,
+                                        gene_sets=v,
+                                        outdir = str(self.outdir),
+                                        format = 'png',
+                                        **prerank_kws)
+                    
+                    res[sample][gset] = prerank
+            
+            else:  # df is None, rnk is not None
+                assert rnk is not None
+                prerank   = gp.prerank(rnk = rnk, 
+                                       gene_sets=v,
+                                       outdir = str(self.outdir),
+                                       format = 'png',
+                                       **prerank_kws)
+                res[gset] = prerank
             
         self.prerank_res = res
         self.prerank_flag = True
@@ -147,7 +191,7 @@ class Enricher(object):
     
     
     def measure_activity(self, processes: list = None,
-                         gmt: str = None,
+                         gmts: str or list= None,
                          genesets: dict = None,
                          prerank_kws: dict = {}):
         '''
@@ -163,22 +207,26 @@ class Enricher(object):
         rnk = self.gene_rnk
         df  = self.gene_df
         
+        
         if processes:
             
-            if not gmt:
+            if not gmts:
                 raise TypeError("If input processes, need to indicate desired gmt to be searched.")
-            elif gmt not in ['GO_Process_2018', 'KEGG_Human_2019']:
-                raise ValueError("gmt has to be in 'GO_Process_2018', 'KEGG_Human_2019'")
+            
+            for gmt in gmts:
+                if gmt not in ['GO_Process_2018', 'KEGG_Human_2019']:
+                    raise ValueError("gmts have to be in 'GO_Process_2018', 'KEGG_Human_2019'")
+            
+            if type(gmts) == str:
+                gmts = [gmts]
             
             fp  = self.local_gene_sets[gmt]
-            name = "-".join([gmt, 'selectedterms'])
+            name = "selectedterms"
             gsets = {name: {}}
-            with open(fp, 'r') as f:
-                for line in f:
-                    process = line.split("\t\t")[0]
-                    if process in processes:
-                        gsets[name][process] = line.split("\t\t")[1].split("\t")[:-1]  # exclude ['\n'], will bias last line
-                        warnings.warn("Will remove last gene from last term!", UserWarning)
+            
+            gmts_paths = [self.local_gene_sets[gmt] for gmt in gmts]
+            gsets[name] = get_genesets(gmts = gmts_paths,
+                                      terms = processes)
             
         elif genesets:        
             if len(genesets.keys()) != 1:
@@ -188,12 +236,26 @@ class Enricher(object):
         else:
             raise ValueError("Require some input. Either genesets or (processes and gmt).")
         
-        raise NotImplementedError("ADD HANDLING OF DATAFRAMES FOR GENE RANKINGS!")
-        prerank = self.prerank(gene_sets = gsets, prerank_kws = prerank_kws)
+#         raise NotImplementedError("ADD HANDLING OF DATAFRAMES FOR GENE RANKINGS!")
         
-        self.measured_activity = prerank
+        ###
+        res = {}
+        
+        if df is not None:
+            for sample, rnk in df.iteritems():
+                res[sample] = self.prerank(rnk, 
+                                           gene_sets = gsets,
+                                           prerank_kws = prerank_kws)
+        
+        if df is None:
+            res = self.prerank(gene_sets = gsets, prerank_kws = prerank_kws)
+        
+        warnings.warn("Recode, can be dict or prerank obj depending input.", UserWarning)
+        ###
+        
+        self.measured_activity = res
         self.activity_flag = True
-        return prerank
+        return res  # can be prerakn obj or dict
         
     
     def _get_genesets(self, path, urls):
