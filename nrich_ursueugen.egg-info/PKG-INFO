@@ -1,0 +1,20 @@
+Metadata-Version: 2.1
+Name: nrich-ursueugen
+Version: 0.0.1
+Summary: Small package for gene enrichment, for internal use.
+Home-page: https://github.com/ursueugen/nrichgenes
+Author: Eugen Ursu
+Author-email: ursu_eugen@hotmail.com
+License: UNKNOWN
+Description: # nrichgenes
+        Performs gene enrichment analysis, for personal use. A wrapper for gseapy: https://pypi.org/project/gseapy/
+        
+        # Usage example
+        TODO
+        
+Platform: UNKNOWN
+Classifier: Programming Language :: Python :: 3
+Classifier: License :: OSI Approved :: MIT License
+Classifier: Operating System :: OS Independent
+Requires-Python: >=3.5
+Description-Content-Type: text/markdown

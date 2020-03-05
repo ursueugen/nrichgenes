@@ -7,7 +7,7 @@ import gseapy as gp
 from .utils import ensembl_to_names, get_genesets
 
 
-GENESETS_DIR  = Path('data/genesets')
+#GENESETS_DIR  = Path('data/genesets')
 GENESETS_URLS = {'KEGG_Human_2019': "http://amp.pharm.mssm.edu/Enrichr/geneSetLibrary?mode=text&libraryName=KEGG_2019_Human",
                  'GO_Process_2018': 'http://amp.pharm.mssm.edu/Enrichr/geneSetLibrary?mode=text&libraryName=GO_Biological_Process_2018'}
 GENESETS_ENRICHR = ['KEGG_2019_Human', 'GO_Biological_Process_2018', 'GO_Molecular_Function_2018'] 
@@ -33,12 +33,18 @@ class Enricher(object):
     '''
     
     
-    def __init__(self, genes: list or pd.Series or pd.DataFrame, description: str, outdir: str):
+    def __init__(self, genes: list or pd.Series or pd.DataFrame, description: str, outdir: str):  # config_path: str, lookup_path: str
         '''
         :param genes
         :param description
         :param outdir
         '''
+        
+        self.description = description
+        self.outdir = str(outdir)
+        self.lookup_path  = Path(self.outdir) / 'ens2names.tsv'
+        self.genesets_dir = Path(self.outdir) / 'genesets'
+        self.urls = GENESETS_URLS
         
         # Resolve type of genes argument
         if type(genes) == list:
@@ -60,18 +66,18 @@ class Enricher(object):
             # assume ensembl ids as gene labels
             warnings.warn("Ensembl IDs or gene names are assumed as labels.", UserWarning)
             self.gene_names = self._ens_to_names(self.gene_list)
-            if self.gene_rnk:
+            if self.gene_rnk is not None:
                 self.gene_rnk.index = self._ens_to_names(self.gene_rnk.index)
-        
-        self.description = description
-        self.outdir = str(outdir)
+                
     
         self.enrichr_gene_sets = GENESETS_ENRICHR
-        self.local_gene_sets = self._get_genesets(path=GENESETS_DIR, urls=GENESETS_URLS)
+        self.local_gene_sets = self._get_genesets(path=self.genesets_dir, urls=self.urls)
         
         self.enrichr_flag  = False
         self.prerank_flag  = False
         self.activity_flag = False
+        
+        
         
 
     def get_results(self) -> dict:
@@ -116,12 +122,12 @@ class Enricher(object):
         return enr
         
     
-    def prerank(self, rnk: pd.Series = None, gene_sets: list or dict = None, prerank_kws: dict = {}):
+    def prerank(self, rnk = None, gene_sets = None, prerank_kws: dict = {}):
         '''
         Performs prerank analysis on the input genes. 
         
-        :param rnk
-        :param gene_sets   - dict with gene sets, e.g. {'name': {'set1': ['gene1', ...], 'set2': ['gene1', ...]}}
+        :param rnk - pd.Series
+        :param gene_sets   - list dict with gene sets, e.g. {'name': {'set1': ['gene1', ...], 'set2': ['gene1', ...]}}
         :param prerank_kws - keyword args for prerank function of gseapy
         '''
         
@@ -153,14 +159,13 @@ class Enricher(object):
         else:  # None
             gsets = self.local_gene_sets
         
-        
         # Perform enrichment
         # change variable name for v, misleading!
         for gset, v in gsets.items():
             
             # need to put the results in different directories to avoid overwriting
             warnings.warn("For multiple processes, the directory files are overwritten!", UserWarning)
-            
+
             if df is not None:
                 
                 # rnk should be None
@@ -178,28 +183,31 @@ class Enricher(object):
             
             else:  # df is None, rnk is not None
                 assert rnk is not None
+                
                 prerank   = gp.prerank(rnk = rnk, 
                                        gene_sets=v,
                                        outdir = str(self.outdir),
                                        format = 'png',
                                        **prerank_kws)
+                
                 res[gset] = prerank
-            
+
+                
         self.prerank_res = res
         self.prerank_flag = True
         return res
     
     
-    def measure_activity(self, processes: list = None,
-                         gmts: str or list= None,
-                         genesets: dict = None,
-                         prerank_kws: dict = {}):
+    def measure_activity(self, processes = None,
+                         gmts = None,
+                         genesets = None,
+                         prerank_kws = {}):
         '''
         Measure the enrichment score for a process.
         
-        :param processes - has to be valid process in selected gmt
-        :param gmt - in {'GO_Process_2018', 'KEGG_Human_2019'}
-        :param genesets
+        :param processes - list - has to be valid process in selected gmt
+        :param gmt - str or list - in {'GO_Process_2018', 'KEGG_Human_2019'}
+        :param genesets - dict
         
         :return prerank object?
         '''
@@ -213,12 +221,13 @@ class Enricher(object):
             if not gmts:
                 raise TypeError("If input processes, need to indicate desired gmt to be searched.")
             
+            if type(gmts) == str:
+                gmts = [gmts]
+                
             for gmt in gmts:
                 if gmt not in ['GO_Process_2018', 'KEGG_Human_2019']:
                     raise ValueError("gmts have to be in 'GO_Process_2018', 'KEGG_Human_2019'")
             
-            if type(gmts) == str:
-                gmts = [gmts]
             
             fp  = self.local_gene_sets[gmt]
             name = "selectedterms"
@@ -284,4 +293,4 @@ class Enricher(object):
     
     
     def _ens_to_names(self, genelist: list):
-        return ensembl_to_names(genelist)
+        return ensembl_to_names(genelist, self.lookup_path)

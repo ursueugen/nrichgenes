@@ -31,6 +31,10 @@ def download_lookup(path = GENE_LOOKUP_PATH) -> pd.DataFrame:
                  "Gene stable ID": "ensembl_id"
              })
     
+    path = Path(path)
+    if not path.parent.is_dir():
+        path.parent.mkdir()
+        
     q.to_csv(path, index=True, header=True)
     
     return q
@@ -71,8 +75,11 @@ def get_genesets(gmts: list, terms: list) -> dict:
         with open(gmt, 'r') as f:    
             for line in f:
                 process = line.split("\t\t")[0]
+                rest = " ".join(line.split("\t\t")[1:])
                 if process in terms:
-                    gsets[process] = line.split("\t\t")[1].split()
+                    print(rest)
+                    print(rest.split())
+                    gsets[process] = rest.split()  # potential errors!
                     
 #                     assert gsets[process][-1] != '\n'
 #                     warnings.warn("Will remove last gene from last term!", UserWarning)
